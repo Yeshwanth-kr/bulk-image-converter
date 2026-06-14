@@ -298,9 +298,11 @@ export default function App() {
               }`}
             >
               <div>
-                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                  Conversion Profile
-                </h2>
+<h2 className={`text-xs font-bold uppercase tracking-wider mb-3 transition-colors duration-300 ${
+  isDevMode ? 'text-slate-400' : 'text-slate-600'
+}`}>
+  CONVERSION PROFILE
+</h2>
 
                 {!isDevMode ? (
                   <div className="space-y-2">
