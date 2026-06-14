@@ -9,9 +9,13 @@ export default function App() {
   const [quality, setQuality] = useState(0.85);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const PAYMENT_CONFIG = {
+    upiId: import.meta.env.VITE_UPI_ID || "",
+    payeeName: import.meta.env.VITE_PAYEE_NAME || "Developer",
+  };
+
   const defaultBreakpoints = [444, 553, 1100];
 
-  // Format file bytes into human-readable strings
   const formatSize = (bytes) => {
     if (bytes === 0) return "0 Bytes";
     const k = 1024;
@@ -20,7 +24,6 @@ export default function App() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  // Intercept and load files into local component state
   const handleFileDrop = (e) => {
     e.preventDefault();
     const droppedFiles = e.dataTransfer
@@ -34,7 +37,7 @@ export default function App() {
         file: file,
         name: file.name,
         size: file.size,
-        status: "waiting", // waiting, processing, completed, error
+        status: "waiting",
       }));
 
     setFiles((prev) => [...prev, ...validImages]);
@@ -48,12 +51,9 @@ export default function App() {
     setFiles([]);
   };
 
-  // Run conversion stream and trigger automated client download
   const handleConversionProcess = async () => {
     if (files.length === 0) return;
     setIsProcessing(true);
-
-    // Mark all items as processing in UI
     setFiles((prev) => prev.map((f) => ({ ...f, status: "processing" })));
 
     try {
@@ -66,8 +66,6 @@ export default function App() {
       };
 
       const zipBlob = await runBatchConversion(files, config);
-
-      // Create download pipeline anchor link
       const url = URL.createObjectURL(zipBlob);
       const link = document.createElement("a");
       link.href = url;
@@ -75,7 +73,6 @@ export default function App() {
       document.body.appendChild(link);
       link.click();
 
-      // Cleanup browser engine reference memory strings
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
@@ -88,18 +85,18 @@ export default function App() {
     }
   };
 
-  // Dynamic status badge renderer
   const renderStatusBadge = (status) => {
     const matrix = {
-      waiting: "bg-gray-100 text-gray-600 border-gray-200",
+      waiting: isDevMode
+        ? "bg-slate-800 text-slate-400 border-slate-700"
+        : "bg-gray-100 text-gray-600 border-gray-200",
       processing: "bg-amber-50 text-amber-600 border-amber-200 animate-pulse",
       completed: "bg-emerald-50 text-emerald-600 border-emerald-200",
       error: "bg-rose-50 text-rose-600 border-rose-200",
     };
-    const style = matrix[status] || matrix.waiting;
     return (
       <span
-        className={`text-xs font-medium px-2.5 py-1 rounded-full border ${style}`}
+        className={`text-xs font-medium px-2.5 py-1 rounded-full border ${matrix[status] || matrix.waiting}`}
       >
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
@@ -107,19 +104,40 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans antialiased">
-      {/* Upper Navigation Bar */}
-      <nav className="bg-white border-b border-slate-200 max-w-full px-6 py-4 flex items-center justify-between shadow-sm">
+    <div
+      className={`min-h-screen font-sans antialiased transition-colors duration-300 ${
+        isDevMode ? "bg-slate-950 text-slate-100" : "bg-slate-50 text-slate-800"
+      }`}
+    >
+      {/* Dynamic Navbar Theme Block */}
+      <nav
+        className={`border-b max-w-full px-6 py-4 flex items-center justify-between shadow-sm transition-colors duration-300 ${
+          isDevMode
+            ? "bg-slate-900 border-slate-800"
+            : "bg-white border-slate-200"
+        }`}
+      >
         <div className="flex items-center space-x-2">
-          <span className="text-xl font-bold tracking-tight bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+          <span
+            className={`text-xl font-bold tracking-tight transition-all ${
+              isDevMode
+                ? "text-emerald-400"
+                : "bg-linear-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent"
+            }`}
+          >
             BulkImageConvert
           </span>
-          <span className="bg-indigo-50 text-indigo-700 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded">
+          <span
+            className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded ${
+              isDevMode
+                ? "bg-emerald-950 text-emerald-400"
+                : "bg-indigo-50 text-indigo-700"
+            }`}
+          >
             v1.0 Local
           </span>
         </div>
 
-        {/* Developer Mode Toggle Switch */}
         <button
           onClick={() => {
             const nextMode = !isDevMode;
@@ -128,7 +146,7 @@ export default function App() {
           }}
           className={`text-xs font-semibold px-4 py-2 rounded-lg transition-all border ${
             isDevMode
-              ? "bg-slate-900 text-emerald-400 border-slate-900 shadow"
+              ? "bg-slate-800 text-emerald-400 border-slate-700 hover:bg-slate-700"
               : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
           }`}
         >
@@ -136,15 +154,19 @@ export default function App() {
         </button>
       </nav>
 
-      {/* Primary Workspace Box */}
+      {/* Main Container Workspace */}
       <main className="max-w-4xl mx-auto px-4 py-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Left Block: File Interception Input Queue */}
+          {/* Left Block: File Dropzone Queue */}
           <div className="md:col-span-2 space-y-6">
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleFileDrop}
-              className="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-white rounded-xl p-8 text-center cursor-pointer transition-colors relative group shadow-sm"
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all relative group shadow-sm ${
+                isDevMode
+                  ? "border-slate-800 bg-slate-900 hover:border-emerald-500"
+                  : "border-slate-300 bg-white hover:border-indigo-500"
+              }`}
             >
               <input
                 type="file"
@@ -155,7 +177,13 @@ export default function App() {
                 aria-label="Upload source images for conversion"
               />
               <div className="space-y-3">
-                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-between mx-auto shadow-sm group-hover:bg-indigo-100 transition-colors">
+                <div
+                  className={`w-12 h-12 rounded-full flex items-center justify-between mx-auto shadow-sm transition-colors ${
+                    isDevMode
+                      ? "bg-slate-800 text-emerald-400 group-hover:bg-slate-700"
+                      : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100"
+                  }`}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-6 w-6 mx-auto"
@@ -172,7 +200,9 @@ export default function App() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-700">
+                  <p
+                    className={`text-sm font-semibold ${isDevMode ? "text-slate-200" : "text-slate-700"}`}
+                  >
                     Drag and drop your images here
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
@@ -185,26 +215,42 @@ export default function App() {
 
             {/* Middle Action Queue Listing Row */}
             {files.length > 0 && (
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                  <h2 className="text-sm font-bold text-slate-700">
+              <div
+                className={`border rounded-xl overflow-hidden shadow-sm transition-colors duration-300 ${
+                  isDevMode
+                    ? "bg-slate-900 border-slate-800"
+                    : "bg-white border-slate-200"
+                }`}
+              >
+                <div
+                  className={`px-5 py-4 border-b flex items-center justify-between ${
+                    isDevMode
+                      ? "bg-slate-900/50 border-slate-800"
+                      : "bg-slate-50 border-slate-200"
+                  }`}
+                >
+                  <h2
+                    className={`text-sm font-bold ${isDevMode ? "text-slate-300" : "text-slate-700"}`}
+                  >
                     Upload Queue ({files.length} files)
                   </h2>
                   <button
                     onClick={clearQueue}
-                    className="text-xs text-rose-600 font-semibold hover:underline"
+                    className="text-xs text-rose-500 font-semibold hover:underline"
                   >
                     Clear All
                   </button>
                 </div>
-                <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-96 overflow-y-auto">
                   {files.map((item) => (
                     <div
                       key={item.id}
                       className="p-4 flex items-center justify-between space-x-4"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-800 truncate">
+                        <p
+                          className={`text-sm font-medium truncate ${isDevMode ? "text-slate-200" : "text-slate-800"}`}
+                        >
                           {item.name}
                         </p>
                         <p className="text-xs text-slate-500 mt-0.5">
@@ -216,8 +262,8 @@ export default function App() {
                         <button
                           onClick={() => removeFile(item.id)}
                           disabled={isProcessing}
-                          className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-slate-50 transition-colors disabled:opacity-30"
-                          aria-label={`Remove ${item.name} from processing list`}
+                          className="text-slate-400 hover:text-rose-500 p-1 rounded hover:bg-slate-800 transition-colors disabled:opacity-30"
+                          aria-label={`Remove ${item.name}`}
                         >
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -242,15 +288,20 @@ export default function App() {
             )}
           </div>
 
-          {/* Right Block: Configuration & Rules Control Panel Deck */}
+          {/* Right Block: Configuration Control Panel Deck */}
           <div className="space-y-6">
-            <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+            <div
+              className={`border rounded-xl p-6 shadow-sm space-y-6 transition-colors duration-300 ${
+                isDevMode
+                  ? "bg-slate-900 border-slate-800"
+                  : "bg-white border-slate-200"
+              }`}
+            >
               <div>
                 <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
                   Conversion Profile
                 </h2>
 
-                {/* Standard Layout Options Set */}
                 {!isDevMode ? (
                   <div className="space-y-2">
                     <button
@@ -281,8 +332,7 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  /* Developer Configuration Options Box Set */
-                  <div className="space-y-4 bg-slate-900 text-slate-200 p-4 rounded-lg border border-slate-800">
+                  <div className="space-y-4 bg-slate-950 text-slate-200 p-4 rounded-lg border border-slate-800">
                     <div>
                       <label className="text-xs font-medium text-slate-400 block mb-1.5">
                         Output Format Selector
@@ -290,8 +340,8 @@ export default function App() {
                       <select
                         value={outputFormat}
                         onChange={(e) => setOutputFormat(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm font-medium text-emerald-400 focus:outline-none focus:border-emerald-500"
-                        aria-label="Developer mode output file type configuration selector"
+                        className="w-full bg-slate-900 border border-slate-800 rounded p-2 pr-8 text-sm font-medium text-emerald-400 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                        aria-label="Developer configuration selector"
                       >
                         <option value="webp">WebP (Lighthouse Max)</option>
                         <option value="jpg">JPEG (Standard Form)</option>
@@ -308,15 +358,15 @@ export default function App() {
                             onChange={(e) =>
                               setGenerateBreakpoints(e.target.checked)
                             }
-                            className="mt-0.5 rounded text-emerald-500 bg-slate-800 border-slate-700 focus:ring-0"
+                            className="mt-0.5 rounded text-emerald-500 bg-slate-900 border-slate-800 focus:ring-0"
                           />
                           <div>
                             <span className="text-xs font-bold text-white block">
                               Generate Responsive Folders
                             </span>
                             <span className="text-[11px] text-slate-400 block mt-0.5">
-                              Creates separate folder outputs containing 444px,
-                              553px, and 1100px variants inside the ZIP map.
+                              Creates sub-folder layouts containing 444px,
+                              553px, and 1100px variants inside the ZIP.
                             </span>
                           </div>
                         </label>
@@ -339,19 +389,26 @@ export default function App() {
                         onChange={(e) =>
                           setQuality(Number(e.target.value) / 100)
                         }
-                        className="w-full accent-emerald-400 bg-slate-700 h-1 rounded-lg appearance-none cursor-pointer"
-                        aria-label="Raw compression canvas quality output slider factor"
+                        className="w-full accent-emerald-400 bg-slate-800 h-1 rounded-lg appearance-none cursor-pointer"
+                        aria-label="Compression canvas slider quality factor"
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Engine Compilation Dispatch Execution Triggers */}
               <button
                 onClick={handleConversionProcess}
                 disabled={files.length === 0 || isProcessing}
-                className="w-full py-3.5 px-4 bg-linear-to-r from-indigo-600 to-violet-600 disabled:from-slate-200 disabled:to-slate-200 disabled:text-slate-400 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-indigo-100 disabled:shadow-none flex items-center justify-center space-x-2 hover:brightness-105 active:scale-[0.99]"
+                className={`w-full py-3.5 px-4 font-bold text-sm rounded-xl transition-all duration-200 shadow-md flex items-center justify-center space-x-2 ${
+                  files.length === 0 || isProcessing
+                    ? isDevMode
+                      ? "bg-slate-800 text-slate-600 cursor-not-allowed shadow-none"
+                      : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                    : isDevMode
+                      ? "bg-linear-to-r from-emerald-600 to-teal-600 text-white shadow-emerald-950/20 hover:brightness-110 hover:scale-[1.01] cursor-pointer"
+                      : "bg-linear-to-r from-indigo-600 to-violet-600 text-white shadow-indigo-100 hover:brightness-105 hover:scale-[1.01] cursor-pointer"
+                }`}
               >
                 {isProcessing ? (
                   <>
@@ -368,29 +425,132 @@ export default function App() {
                         stroke="currentColor"
                         strokeWidth="4"
                       />
-                      <circle
-                        className="opacity-75"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="fill"
-                      />
                     </svg>
                     <span>Processing Matrix Streams...</span>
                   </>
                 ) : (
-                  <>
-                    <span>⚡ Convert Batch & Download ZIP</span>
-                  </>
+                  <span>⚡ Convert Batch & Download ZIP</span>
                 )}
               </button>
             </div>
           </div>
         </div>
       </main>
+      {/* Micro-Donation & Value Proposition Banner */}
+      <section className="max-w-6xl mx-auto px-4 mt-12">
+        <div className="bg-linear-to-r from-blue-600 to-indigo-700 rounded-xl p-6 md:p-8 text-white shadow-lg text-center md:text-left md:flex md:items-center md:justify-between gap-6">
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold">
+              Saved manual editing hours? ☕
+            </h3>
+            <p className="text-sm text-blue-100 max-w-2xl">
+              This tool is completely free, private, and contains no intrusive
+              pop-up ads.
+              <br />
+              If you want to keep this serverless tool fast and secure. consider
+              supporting the developer with a small contribution!
+            </p>
+          </div>
+          <div className="mt-6 md:mt-0 flex flex-col sm:flex-row items-center justify-center gap-4 shrink-0">
+            {/* UPI Intent Gateway Option */}
+            <a
+              href={`upi://pay?pa=${PAYMENT_CONFIG.upiId}&pn=${encodeURIComponent(PAYMENT_CONFIG.payeeName)}&cu=INR`}
+              className="bg-white text-blue-700 hover:bg-blue-50 font-bold text-sm px-6 py-3 rounded-lg shadow transition block w-full sm:w-auto text-center"
+            >
+              ⚡ Pay via UPI (₹20 / ₹50)
+            </a>
+          </div>
+        </div>
+      </section>
+      {/* Semantic FAQ Section for Technical SEO */}
+      <section
+        className={`max-w-4xl mx-auto px-4 mt-16 pt-12 border-t transition-colors duration-300 ${
+          isDevMode ? "border-slate-900" : "border-slate-200"
+        }`}
+      >
+        <h2
+          className={`text-xl font-bold tracking-tight mb-6 ${isDevMode ? "text-slate-200" : "text-slate-800"}`}
+        >
+          Frequently Asked Questions
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+          <div
+            className={`p-5 rounded-xl border shadow-sm transition-colors ${
+              isDevMode
+                ? "bg-slate-900 border-slate-800 text-slate-300"
+                : "bg-white border-slate-200 text-slate-800"
+            }`}
+          >
+            <h3 className="font-semibold text-sm">
+              Why do transparent backgrounds turn white?
+            </h3>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Standard JPEG formats do not support alpha transparency channels.
+              Our client-side rendering pipeline automatically layers a clean
+              white background under your graphics to stop portals from breaking
+              or corrupting your transparent areas into black blocks.
+            </p>
+          </div>
+          <div
+            className={`p-5 rounded-xl border shadow-sm transition-colors ${
+              isDevMode
+                ? "bg-slate-900 border-slate-800 text-slate-300"
+                : "bg-white border-slate-200 text-slate-800"
+            }`}
+          >
+            <h3 className="font-semibold text-sm">
+              How do responsive folders work?
+            </h3>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              When Developer Mode is switched on, a single image splits into
+              discrete production sizes:{" "}
+              <code
+                className={`px-1 rounded  ${isDevMode ? "bg-slate-800 text-emerald-400" : "bg-slate-100 text-indigo-600"}`}
+              >
+                444px
+              </code>
+              ,{" "}
+              <code
+                className={`px-1 rounded  ${isDevMode ? "bg-slate-800 text-emerald-400" : "bg-slate-100 text-indigo-600"}`}
+              >
+                553px
+              </code>
+              , and{" "}
+              <code
+                className={`px-1 rounded  ${isDevMode ? "bg-slate-800 text-emerald-400" : "bg-slate-100 text-indigo-600"}`}
+              >
+                1100px
+              </code>
+              . The utility generates dynamic folder trees within the ZIP,
+              stopping image blur and saving manual export steps.
+            </p>
+          </div>
+          <div
+            className={`p-5 rounded-xl border shadow-sm md:col-span-2 transition-colors ${
+              isDevMode
+                ? "bg-slate-900 border-slate-800 text-slate-300"
+                : "bg-white border-slate-200 text-slate-800"
+            }`}
+          >
+            <h3 className="font-semibold text-sm">
+              Is batch processing safe for sensitive files?
+            </h3>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Entirely. Your photos are decoded directly into native local
+              canvas memory layers. Because no third-party APIs, remote servers,
+              or external tracking analytics parse your data stream, processing
+              runs with complete privacy offline.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Footer Branding Wrapper */}
-      <footer className="mt-20 py-8 border-t border-slate-200 text-center max-w-full">
+      <footer
+        className={`mt-20 py-8 border-t text-center max-w-full transition-colors duration-300 ${
+          isDevMode ? "border-slate-900" : "border-slate-200"
+        }`}
+      >
         <p className="text-xs text-slate-500 font-medium">
           BulkImageConvert • 100% Private Client-Side Canvas System • No server
           uploads.

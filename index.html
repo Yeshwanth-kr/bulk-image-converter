@@ -28,6 +28,39 @@
       property="og:description"
       content="Batch convert modern images into legacy formats or break assets down into developer-ready responsive breakpoints instantly in your browser RAM."
     />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Why did my transparent PNG background turn white when converting to JPG?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The JPEG image format inherently does not support transparency alpha channels. To prevent the transparent areas from turning into ugly black boxes, our local canvas engine automatically injects a solid white background layer behind your graphic during the batch encoding stream."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does the Responsive Folders breakpoint generator work?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "When Developer Mode is enabled and outputting WebP, our engine processes each image through iterative canvas resizing loops matching common web viewport widths: 444px, 553px, and 1100px. It automatically prevents upscaling on small assets and packages the variants inside clean individual sub-directories inside your download ZIP archive, completely ready for HTML srcset copy-pasting."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Are my batch image uploads stored on a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. The entire application runs completely serverless inside your browser's local sandbox RAM using the HTML5 Canvas API and JavaScript stream generation. Your images never leave your machine, making the data 100% private and secure."
+            }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
