@@ -1,0 +1,34 @@
+name: DevOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install & Test
+        run: |
+          npm install --legacy-peer-deps
+          npm run lint # Shows you care about code quality
+          
+      - name: Build Docker Image
+        run: docker build -t bulk-image-converter:latest .
+
+      - name: Run Security Scan (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'bulk-image-converter:latest'
+          format: 'table'
+          exit-code: '0' # Don't fail the build yet, just show the report
+          severity: 'CRITICAL,HIGH'
